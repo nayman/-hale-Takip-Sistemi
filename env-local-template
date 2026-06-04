@@ -1,0 +1,31 @@
+# Database - GERÇEK SUPABASE ŞİFRENİZİ EKLEYİN
+DATABASE_URL="postgresql://postgres.qhvaudftrpmewkavxawm:[BURAYA-GERCEK-SIFRE-YAZIN]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Direct connection to the database. Used for migrations
+DIRECT_URL="postgresql://postgres.qhvaudftrpmewkavxawm:[BURAYA-GERCEK-SIFRE-YAZIN]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
+
+# NextAuth
+NEXTAUTH_SECRET="your-secret-key-here-change-this"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Redis (for BullMQ)
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+REDIS_PASSWORD=""
+
+# Storage Adapter
+STORAGE_ADAPTER="local"
+
+# Yandex Disk (if using yandex adapter)
+YANDEX_DISK_CLIENT_ID=""
+YANDEX_DISK_CLIENT_SECRET=""
+
+# SMS (Netgsm)
+NETGSM_USER_CODE=""
+NETGSM_PASSWORD=""
+
+# Email (SMTP)
+SMTP_HOST=""
+SMTP_PORT="587"
+SMTP_USER=""
+SMTP_PASSWORD=""

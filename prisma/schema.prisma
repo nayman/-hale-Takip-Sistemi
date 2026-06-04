@@ -1,0 +1,749 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id                        String                  @id @default(cuid())
+  name                      String
+  domain                    String?                 @unique
+  yandexToken               String?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  accounts                  Account[]
+  ihaleler                  Ihale[]
+  ihaleBelgeleri            IhaleBelge[]
+  sessions                  Session[]
+  users                     User[]
+  sirketEvraklari           SirketEvrak[]
+  auditLogs                 AuditLog[]
+  notifications             Notification[]
+  kurumlar                  Kurum[]
+  rakipFirmalar             RakipFirma[]
+  yaklasikMaliyetler        YaklasikMaliyet[]
+  resmiTatiller             ResmiTatil[]
+  sozlesmeler               Sozlesme[]
+  bankalar                  Banka[]
+  onMaddeSablonlar          OnMaddeSablon[]
+  sozlesmeOnMaddeDurumlari  SozlesmeOnMaddeDurum[]
+  kurumAramaLoglari         KurumAramaLog[]
+  hakedisChecklistItems     HakedisChecklistItem[]
+  sozlesmeIncidents         SozlesmeIncident[]
+  sozlesmePersonelRaporlari SozlesmePersonelRapor[]
+  sozlesmeAltYukleniciler   SozlesmeAltYuklenici[]
+
+  @@map("tenants")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  tenantId          String
+  tenant            Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId, tenantId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id                     String         @id @default(cuid())
+  name                   String?
+  email                  String         @unique
+  password               String?
+  emailVerified          DateTime?
+  image                  String?
+  rol                    String         @default("OPERASYON")
+  tenantId               String
+  accounts               Account[]
+  olusturulanIhaleler    Ihale[]        @relation("IhaleOlusturan")
+  sorumluIhaleler        Ihale[]        @relation("IhaleSorumlu")
+  yuklenenEvraklar       SirketEvrak[]  @relation("EvrakYukleyen")
+  yuklenenIhaleBelgeleri IhaleBelge[]   @relation("IhaleBelgeYukleyen")
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  sessions               Session[]
+  tenant                 Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  tenantId   String
+
+  @@unique([identifier, token, tenantId])
+  @@map("verification_tokens")
+}
+
+model Kurum {
+  id                 String            @id @default(cuid())
+  ad                 String
+  unvan              String?
+  vergiNo            String?
+  vergiDairesi       String?
+  il                 String?
+  ilce               String?
+  adres              String?
+  telefon            String?
+  email              String?
+  hafizaNotlari      KurumHafizaNot[]
+  kisiler            KurumKisi[]
+  ihaleler           Ihale[]
+  yaklasikMaliyetler YaklasikMaliyet[]
+  aramaLoglari       KurumAramaLog[]
+  tenantId           String
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@map("kurumlar")
+}
+
+model RakipFirma {
+  id              String       @id @default(cuid())
+  ad              String
+  unvan           String?
+  vergiNo         String?
+  il              String?
+  telefon         String?
+  ihaleTeklifleri IhaleRakip[]
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([tenantId])
+  @@map("rakip_firmalar")
+}
+
+model KurumKisi {
+  id             String       @id @default(cuid())
+  kurumId        String
+  ad             String
+  soyad          String
+  unvan          String?
+  telefon        String?
+  email          String?
+  userId         String? // Eğer sistem kullanıcısıysa eşleşir
+  ihaleAtamalari IhaleAtama[]
+  kurum          Kurum        @relation(fields: [kurumId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([kurumId])
+  @@map("kurum_kisileri")
+}
+
+model KurumHafizaNot {
+  id        String   @id @default(cuid())
+  kurumId   String
+  not       String
+  yazar     String // Notu yazan kişinin adı
+  createdAt DateTime @default(now())
+  kurum     Kurum    @relation(fields: [kurumId], references: [id], onDelete: Cascade)
+
+  @@index([kurumId])
+  @@map("kurum_hafiza_notlari")
+}
+
+model Ihale {
+  id                 String               @id @default(cuid())
+  ihaleNo            String               @unique // IKN
+  ad                 String // İşin Adı
+  aciklama           String?
+  tur                String // MAL_ALIM, HIZMET_ALIM, YAPIM_ISI
+  usul               String // ACIK_IHALE, BELLI_ISTEKLI, DOGRUDAN_TEMIN
+  butce              Float                @default(0)
+  sozlesmeBedeli     Float?
+  baslangicTarihi    DateTime?
+  bitisTarihi        DateTime?
+  teklifSonTarihi    DateTime
+  ilanTarihi         DateTime?
+  durum              String               @default("TASLAK")
+  ymTutar            Float?
+  rKatsayisi         Float?
+  sinirDeger         Float?
+  teklifimiz         Float?
+  kurumId            String
+  kurum              Kurum                @relation(fields: [kurumId], references: [id])
+  geciciTeminatlar   IhaleGeciciTeminat[]
+  atamalar           IhaleAtama[]
+  rakipAnalizleri    IhaleRakip[]
+  notlar             IhaleNot[]
+  itirazlar          IhaleItiraz[]
+  yaklasikMaliyetler YaklasikMaliyet[]
+  belgeler           IhaleBelge[]
+  sozlesme           Sozlesme?
+  personelParam      IhalePersonelParam?
+  yanHakParam        IhaleYanHakParam?
+  puantajlar         Puantaj[]
+  hakedisler         Hakedis[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  tenantId           String
+  olusturanUserId    String
+  sorumluUserId      String?
+  olusturanUser      User                 @relation("IhaleOlusturan", fields: [olusturanUserId], references: [id])
+  sorumluUser        User?                @relation("IhaleSorumlu", fields: [sorumluUserId], references: [id])
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([kurumId])
+  @@map("ihaleler")
+}
+
+model IhalePersonelParam {
+  id               String   @id @default(cuid())
+  ihaleId          String   @unique
+  personelSayisi   Int
+  asgariUcretYuzde Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ihale Ihale @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+
+  @@map("ihale_personel_param")
+}
+
+model IhaleYanHakParam {
+  id                   String   @id @default(cuid())
+  ihaleId              String   @unique
+  yolGunluk            Float    @default(0)
+  yanHakGunSayisi      Int      @default(22)
+  yemekTip             String   @default("NAKDI")
+  yemekGunluk          Float    @default(0)
+  fazlaMesaiSaatUcreti Float    @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  ihale Ihale @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+
+  @@map("ihale_yan_hak_param")
+}
+
+model Puantaj {
+  id              String   @id @default(cuid())
+  ihaleId         String
+  yil             Int
+  ay              Int
+  calismaGunu     Int
+  devamsizlikGunu Int      @default(0)
+  fazlaMesaiSaat  Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ihale Ihale @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+
+  @@unique([ihaleId, yil, ay])
+  @@index([ihaleId])
+  @@map("puantajlar")
+}
+
+model Hakedis {
+  id           String    @id @default(cuid())
+  ihaleId      String
+  yil          Int
+  ay           Int
+  brutTutar    Float
+  kdvOrani     Float     @default(20)
+  stopajOrani  Float     @default(0)
+  ceza         Float     @default(0)
+  digerKesinti Float     @default(0)
+  kdvTutari    Float
+  stopajTutari Float
+  netTutar     Float
+  durum        String    @default("TASLAK") // TASLAK, ONAYLANDI, ODENDI
+  onayTarihi   DateTime?
+  vadeTarihi   DateTime?
+  odemeTarihi  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  ihale          Ihale                  @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+  checklistItems HakedisChecklistItem[]
+
+  @@unique([ihaleId, yil, ay])
+  @@index([ihaleId])
+  @@map("hakedisler")
+}
+
+model HakedisChecklistItem {
+  id        String   @id @default(cuid())
+  hakedisId String
+  belgeKodu String
+  belgeAdi  String
+  durum     String   @default("EKSIK") // EKSIK, TAMAMLANDI, MUAF
+  not       String?
+  dosyaAdi  String?
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hakedis Hakedis @relation(fields: [hakedisId], references: [id], onDelete: Cascade)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, hakedisId, belgeKodu])
+  @@index([tenantId])
+  @@index([hakedisId])
+  @@map("hakedis_checklist_items")
+}
+
+model IhaleBelge {
+  id             String    @id @default(cuid())
+  ihaleId        String
+  dosyaAdi       String
+  dosyaYolu      String
+  dosyaBoyutu    Int
+  dosyaTipi      String
+  aciklama       String?
+  durum          String    @default("AKTIF") // AKTIF, PASIF
+  silinmeTarihi  DateTime?
+  yukleyenUserId String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenantId       String
+
+  ihale        Ihale  @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+  yukleyenUser User   @relation("IhaleBelgeYukleyen", fields: [yukleyenUserId], references: [id], onDelete: Cascade)
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([ihaleId])
+  @@index([createdAt])
+  @@map("ihale_belgeleri")
+}
+
+model YaklasikMaliyet {
+  id           String   @id @default(cuid())
+  ihaleId      String?
+  kurumId      String
+  versiyonNo   String   @default("v1")
+  tutar        Float
+  aktifMi      Boolean  @default(true)
+  dosyaYolu    String?
+  sartnameNotu String?
+  ihale        Ihale?   @relation(fields: [ihaleId], references: [id])
+  kurum        Kurum    @relation(fields: [kurumId], references: [id])
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([ihaleId])
+  @@index([kurumId])
+  @@map("yaklasik_maliyetler")
+}
+
+model IhaleGeciciTeminat {
+  id          String    @id @default(cuid())
+  ihaleId     String
+  tutar       Float
+  banka       String?
+  bitisTarihi DateTime?
+  mektupNo    String?
+  ihale       Ihale     @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([ihaleId])
+  @@map("ihale_gecici_teminatlar")
+}
+
+model IhaleAtama {
+  id          String    @id @default(cuid())
+  ihaleId     String
+  kurumKisiId String
+  rol         String? // KOMISYON_BASKANI, UYE, vb.
+  ihale       Ihale     @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+  kurumKisi   KurumKisi @relation(fields: [kurumKisiId], references: [id], onDelete: Cascade)
+
+  @@unique([ihaleId, kurumKisiId])
+  @@map("ihale_atamalari")
+}
+
+model IhaleRakip {
+  id            String     @id @default(cuid())
+  ihaleId       String
+  rakipFirmaId  String
+  teklifTutar   Float
+  siralamasi    Int?
+  bizimTeklifMi Boolean    @default(false)
+  ihale         Ihale      @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+  rakipFirma    RakipFirma @relation(fields: [rakipFirmaId], references: [id], onDelete: Cascade)
+
+  @@index([ihaleId])
+  @@index([rakipFirmaId])
+  @@map("ihale_rakip_analizleri")
+}
+
+model IhaleNot {
+  id        String   @id @default(cuid())
+  ihaleId   String
+  not       String
+  yazar     String
+  createdAt DateTime @default(now())
+  ihale     Ihale    @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+
+  @@index([ihaleId])
+  @@map("ihale_notlari")
+}
+
+model IhaleItiraz {
+  id            String             @id @default(cuid())
+  ihaleId       String
+  tip           String // IDAREYE_ITIRAZ, KIK_ITIRAZI
+  durum         String // TASLAK, GONDERILDI, REDDEDILDI, KABUL_EDILDI
+  aciklama      String?
+  basvuruTarihi DateTime           @default(now())
+  kararTarihi   DateTime?
+  belgeler      IhaleItirazBelge[]
+  ihale         Ihale              @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+
+  @@index([ihaleId])
+  @@map("ihale_itirazlari")
+}
+
+model IhaleItirazBelge {
+  id        String      @id @default(cuid())
+  itirazId  String
+  ad        String
+  dosyaYolu String
+  not       String?
+  itiraz    IhaleItiraz @relation(fields: [itirazId], references: [id], onDelete: Cascade)
+
+  @@index([itirazId])
+  @@map("ihale_itiraz_belgeleri")
+}
+
+model DimTakvim {
+  id           Int          @id @default(autoincrement())
+  tarih        DateTime     @unique
+  yil          Int
+  ay           Int
+  gun          Int
+  haftaninGunu Int // 1-7
+  haftaSonuMu  Boolean      @default(false)
+  tatiller     ResmiTatil[]
+
+  @@map("dim_takvim")
+}
+
+model ResmiTatil {
+  id       String    @id @default(cuid())
+  tarih    DateTime
+  aciklama String?
+  arefe    Boolean   @default(false)
+  tenantId String
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  takvim   DimTakvim @relation(fields: [tarih], references: [tarih])
+
+  @@unique([tarih, tenantId])
+  @@map("resmi_tatiller")
+}
+
+model SirketEvrak {
+  id                  String    @id @default(cuid())
+  ad                  String
+  tip                 String // KIMLIK, VERGI, SIGORTA, RUHSAT, SERTIFIKA, SOZLESME, DIGER
+  kategori            String // PERSONEL, MALI, HUKUKI, TEKNIK, IDARI
+  aciklama            String?
+  dosyaYolu           String // Storage path
+  dosyaAdi            String // Original filename
+  dosyaBoyutu         Int // File size in bytes
+  dosyaTipi           String // MIME type
+  yukleyenUserId      String
+  sonGecerlilikTarihi DateTime?
+  yayinTarihi         DateTime?
+  iptalTarihi         DateTime?
+  versiyon            Int       @default(1)
+  durum               String    @default("AKTIF") // AKTIF, PASIF, IPTAL
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  tenantId            String
+  yukleyenUser        User      @relation("EvrakYukleyen", fields: [yukleyenUserId], references: [id])
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("sirket_evraklari")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  entity    String // IHALE, YAKLASIK_MALIYET, SOZLESME, vb.
+  entityId  String
+  action    String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT
+  userId    String
+  data      Json? // Değişiklik detayları
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  title     String
+  message   String
+  type      String
+  data      Json?
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+model Sozlesme {
+  id                          String                  @id @default(cuid())
+  ihaleId                     String                  @unique
+  ekapNo                      String?
+  bedel                       Float
+  odemeVadesiGun              Int                     @default(30)
+  cezaUstSinirYuzde           Float                   @default(30)
+  kritikKesintiSaat           Int                     @default(12)
+  kritikKesintiCezaYuzde      Float                   @default(2)
+  donemSonlandirmaFesihTekrar Int                     @default(2)
+  ozelAykirilikFesihLimit     Int                     @default(30)
+  altYukleniciKural           String                  @default("YASAK")
+  baslangicTarihi             DateTime?
+  bitisTarihi                 DateTime?
+  damgaVergisi                Float?
+  kararPulu                   Float?
+  kikPayi                     Float?
+  kesinTeminatTutari          Float?
+  fikriMulkiyet               String?
+  teslimHaklari               String?
+  ortakGirisim                Boolean                 @default(false)
+  ortaklikOranlari            Json?
+  ihale                       Ihale                   @relation(fields: [ihaleId], references: [id], onDelete: Cascade)
+  kesinTeminatlar             SozlesmeKesinTeminat[]
+  belgeler                    SozlesmeBelge[]
+  notlar                      SozlesmeNot[]
+  onMaddeDurumlari            SozlesmeOnMaddeDurum[]
+  incidents                   SozlesmeIncident[]
+  personelRaporlar            SozlesmePersonelRapor[]
+  altYukleniciler             SozlesmeAltYuklenici[]
+  tenantId                    String
+  tenant                      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+
+  @@index([tenantId])
+  @@map("sozlesmeler")
+}
+
+model SozlesmeOnMaddeDurum {
+  id         String   @id @default(cuid())
+  sozlesmeId String
+  belgeAdi   String
+  durum      String   @default("EKSIK")
+  tenantId   String
+  sozlesme   Sozlesme @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, sozlesmeId, belgeAdi])
+  @@index([tenantId])
+  @@index([sozlesmeId])
+  @@map("sozlesme_onmadde_durumlari")
+}
+
+model SozlesmeIncident {
+  id              String    @id @default(cuid())
+  sozlesmeId      String
+  tenantId        String
+  tip             String
+  baslangicTarihi DateTime?
+  bitisTarihi     DateTime?
+  sureSaat        Float?
+  cezaTutar       Float     @default(0)
+  cezaYuzde       Float?
+  riskSeviye      String    @default("INFO")
+  fesihRiski      Boolean   @default(false)
+  aciklama        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sozlesme Sozlesme @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([sozlesmeId])
+  @@map("sozlesme_incidents")
+}
+
+model SozlesmePersonelRapor {
+  id              String    @id @default(cuid())
+  sozlesmeId      String
+  tenantId        String
+  personelAdSoyad String
+  raporGun        Int
+  baslangicTarihi DateTime?
+  bitisTarihi     DateTime?
+  ikameEdildi     Boolean   @default(false)
+  ikameNot        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sozlesme Sozlesme @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([sozlesmeId])
+  @@map("sozlesme_personel_raporlar")
+}
+
+model SozlesmeAltYuklenici {
+  id             String    @id @default(cuid())
+  sozlesmeId     String
+  tenantId       String
+  firmaAd        String
+  vergiNo        String?
+  belgeDosyaAdi  String?
+  belgeDosyaYolu String?
+  durum          String    @default("TASLAK")
+  onayTarihi     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sozlesme Sozlesme @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([sozlesmeId])
+  @@map("sozlesme_alt_yukleniciler")
+}
+
+model Banka {
+  id              String                 @id @default(cuid())
+  ad              String
+  sube            String?
+  toplamLimit     Float                  @default(0)
+  kullanilanLimit Float                  @default(0)
+  komisyonOrani   Float                  @default(0)
+  teminatlar      SozlesmeKesinTeminat[]
+  tenantId        String
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([tenantId])
+  @@map("bankalar")
+}
+
+model SozlesmeKesinTeminat {
+  id         String    @id @default(cuid())
+  sozlesmeId String
+  bankaId    String?
+  tutar      Float
+  tip        String // NAKIT, MEKTUP
+  mektupNo   String?
+  vadeTarihi DateTime?
+  durum      String    @default("AKTIF") // AKTIF, IADE_EDILDI, NAKDE_CEVRILDI
+  sozlesme   Sozlesme  @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+  banka      Banka?    @relation(fields: [bankaId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([sozlesmeId])
+  @@index([bankaId])
+  @@map("sozlesme_kesin_teminatlar")
+}
+
+model SozlesmeBelge {
+  id         String   @id @default(cuid())
+  sozlesmeId String
+  ad         String
+  dosyaYolu  String
+  sozlesme   Sozlesme @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([sozlesmeId])
+  @@map("sozlesme_belgeleri")
+}
+
+model SozlesmeNot {
+  id         String   @id @default(cuid())
+  sozlesmeId String
+  not        String
+  yazar      String
+  createdAt  DateTime @default(now())
+  sozlesme   Sozlesme @relation(fields: [sozlesmeId], references: [id], onDelete: Cascade)
+
+  @@index([sozlesmeId])
+  @@map("sozlesme_notlari")
+}
+
+model OnMaddeSablon {
+  id        String   @id @default(cuid())
+  ad        String
+  belgeTipi String // VERGI_BORCU, SGK_BORCU, TICARET_SICIL vb.
+  aciklama  String?
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("on_madde_sablonlar")
+}
+
+model KurumAramaLog {
+  id         String   @id @default(cuid())
+  kurumId    String
+  kurum      Kurum    @relation(fields: [kurumId], references: [id], onDelete: Cascade)
+  arananKisi String?
+  modul      String? // YAKLASIK_MALIYET, IHALE, SOZLESME vb.
+  not        String
+  yazar      String
+  createdAt  DateTime @default(now())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([kurumId])
+  @@index([tenantId])
+  @@map("kurum_arama_loglari")
+}

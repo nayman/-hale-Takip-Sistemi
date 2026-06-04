@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import { withTenant } from "@/lib/prisma-client"
+import { z } from "zod"
+
+const schema = z.object({
+  personelSayisi: z.coerce.number().int().min(0),
+  asgariUcretYuzde: z.coerce.number().finite().min(0),
+})
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+    if (!session?.user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const tenantId = session.user.tenantId
+    const { id: ihaleId } = await params
+
+    const data = await withTenant(tenantId, (tx: any) =>
+      tx.ihalePersonelParam.findFirst({ where: { ihaleId, ihale: { tenantId } } })
+    )
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error("GET ihale personel param hatası:", error)
+    return NextResponse.json({ error: "Personel parametreleri alınırken hata oluştu" }, { status: 500 })
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+    if (!session?.user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    const role = session.user.rol
+    const isPrivileged = role === "SUPER_ADMIN" || role === "TENANT_ADMIN"
+    if (!isPrivileged) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+    const tenantId = session.user.tenantId
+    const { id: ihaleId } = await params
+    const body = await request.json()
+    const validated = schema.parse(body)
+
+    const saved = await withTenant(tenantId, async (tx: any) => {
+      const ihale = await tx.ihale.findFirst({ where: { id: ihaleId, tenantId } })
+      if (!ihale) return null
+
+      return tx.ihalePersonelParam.upsert({
+        where: { ihaleId },
+        create: {
+          ihaleId,
+          personelSayisi: validated.personelSayisi,
+          asgariUcretYuzde: validated.asgariUcretYuzde,
+        },
+        update: {
+          personelSayisi: validated.personelSayisi,
+          asgariUcretYuzde: validated.asgariUcretYuzde,
+        },
+      })
+    })
+
+    if (!saved) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return NextResponse.json(saved)
+  } catch (error) {
+    if (error instanceof z.ZodError) return NextResponse.json({ error: "Validation error", details: error.issues }, { status: 400 })
+    console.error("PUT ihale personel param hatası:", error)
+    return NextResponse.json({ error: "Personel parametreleri kaydedilirken hata oluştu" }, { status: 500 })
+  }
+}
