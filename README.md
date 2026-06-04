@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# İhale ve Operasyon Yönetim Sistemi (SaaS)
 
-## Getting Started
+Bu proje, 4734 sayılı Kamu İhale Kanunu'na tabi olan ihaleler ve özel ihalelerdeki tüm süreçleri uçtan uca tek bir platform üzerinden yönetmek amacıyla geliştirilmiş kapsamlı bir **SaaS (Hizmet Olarak Yazılım)** sistemidir.
 
-First, run the development server:
+## 🎯 Projenin Amacı
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Şirketlerin ihale süreçlerinde karşılaştığı dağınık yapıyı ortadan kaldırmak ve tüm aşamaları (hazırlık, tekliflendirme, sözleşme, hakediş ve tahsilat) dijitalleştirerek yasal sürelere tam uyum sağlamaktır.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Temel Özellikler
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Teklif ve Yaklaşık Maliyet (YM) Yönetimi:** Rakiplerin analiz edilmesi, tekliflerin versiyonlanması ve sınır değer hesaplamaları.
+- **Hukuki Süreç ve İtiraz Takibi:** KİK (Kamu İhale Kurumu) itiraz süreçleri, yasal bekleme süreleri ve otomatik alarm/hatırlatmalar.
+- **Sözleşme Yönetimi:** Kesin teminatların takibi, 10. madde evraklarının yönetimi; damga vergisi, karar pulu, KİK payı gibi otomatik maliyet hesaplamaları.
+- **Hakediş ve Tahsilat:** Brüt hakedişten ceza ve yasal kesintilerin otomatik düşülerek net ödemenin takibi; banka entegrasyonları.
+- **İK ve Personel Atamaları:** İhalelere özel personel havuzu ve puantaj yönetimi, asgari ücret bazlı maliyet takibi.
+- **Kurumsal Hafıza ve Belge Arşivi:** Yandex Disk entegrasyonu sayesinde her ihale için otomatik klasör yapısı oluşturulması ve belgelerin güvenle (versiyonlanarak) saklanması.
+- **Rol Tabanlı Erişim Sistemi (RBAC):** İhale Sorumlusu, Muhasebe, Operasyon gibi rollerle veriye güvenli ve kontrollü erişim.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Kullanılan Teknolojiler
 
-## Learn More
+- **Frontend & Backend:** Next.js (App Router), TypeScript
+- **Veritabanı:** PostgreSQL (Multi-tenant mimari, Row-Level Security)
+- **ORM:** Prisma
+- **Kimlik Doğrulama:** NextAuth.js v5
+- **Arka Plan İşlemleri & Zamanlayıcı:** BullMQ (Redis)
+- **Depolama (Storage):** Yandex Disk API (Adapter Pattern)
+- **UI & Stil:** Tailwind CSS
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Bu platform, bir firmanın tüm departmanlarının senkronize çalışmasını sağlayarak hataları, zaman kayıplarını ve yasal ceza risklerini minimuma indirmeyi hedefler.
